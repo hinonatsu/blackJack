@@ -1,0 +1,24 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: dark; }
+* { box-sizing: border-box; }
+html { min-height: 100%; background: #07170f; }
+body { min-height: 100vh; margin: 0; background: #07170f; color: #f7f4e8; font-family: Arial, "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif; }
+button, input, select { font: inherit; }
+button { -webkit-tap-highlight-color: transparent; }
+
+@keyframes deal-card {
+  from { opacity: 0; transform: translate3d(220px, -100px, 0) rotate(8deg) scale(.82); }
+  to { opacity: 1; transform: translate3d(0, 0, 0) rotate(0) scale(1); }
+}
+
+.deal-card { animation: deal-card 180ms ease-out both; }
+.felt-texture {
+  background-color: #075b36;
+  background-image: radial-gradient(rgba(255,255,255,.045) 1px, transparent 1px), radial-gradient(rgba(0,0,0,.1) 1px, transparent 1px);
+  background-position: 0 0, 8px 8px;
+  background-size: 16px 16px;
+}
+.focus-ring:focus-visible { outline: 3px solid #f3c85b; outline-offset: 3px; }
