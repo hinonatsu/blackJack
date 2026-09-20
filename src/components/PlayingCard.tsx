@@ -12,22 +12,25 @@ export interface CasinoCard {
 }
 
 const SUIT_DETAILS = {
-  clubs: { glyph: '♣', name: 'Clubs', color: 'text-slate-950' },
-  diamonds: { glyph: '♦', name: 'Diamonds', color: 'text-red-700' },
-  hearts: { glyph: '♥', name: 'Hearts', color: 'text-red-700' },
-  spades: { glyph: '♠', name: 'Spades', color: 'text-slate-950' },
+  clubs: { glyph: '♣', name: 'Clubs', color: 'text-[#141414]' },
+  diamonds: { glyph: '♦', name: 'Diamonds', color: 'text-[#e21b23]' },
+  hearts: { glyph: '♥', name: 'Hearts', color: 'text-[#e21b23]' },
+  spades: { glyph: '♠', name: 'Spades', color: 'text-[#141414]' },
 } as const;
 
-const NUMBER_OF_PIPS: Partial<Record<CasinoCard['rank'], number>> = {
-  '2': 2,
-  '3': 3,
-  '4': 4,
-  '5': 5,
-  '6': 6,
-  '7': 7,
-  '8': 8,
-  '9': 9,
-  '10': 10,
+type PipPosition = { x: number; y: number; inverted?: boolean };
+
+/** Traditional French-suited pip positions, expressed as card-face percentages. */
+const PIP_LAYOUTS: Partial<Record<CasinoRank, readonly PipPosition[]>> = {
+  '2': [{ x: 50, y: 23 }, { x: 50, y: 77, inverted: true }],
+  '3': [{ x: 50, y: 20 }, { x: 50, y: 50 }, { x: 50, y: 80, inverted: true }],
+  '4': [{ x: 25, y: 22 }, { x: 75, y: 22 }, { x: 25, y: 78, inverted: true }, { x: 75, y: 78, inverted: true }],
+  '5': [{ x: 25, y: 21 }, { x: 75, y: 21 }, { x: 50, y: 50 }, { x: 25, y: 79, inverted: true }, { x: 75, y: 79, inverted: true }],
+  '6': [{ x: 25, y: 19 }, { x: 75, y: 19 }, { x: 25, y: 50 }, { x: 75, y: 50 }, { x: 25, y: 81, inverted: true }, { x: 75, y: 81, inverted: true }],
+  '7': [{ x: 25, y: 17 }, { x: 75, y: 17 }, { x: 50, y: 35 }, { x: 25, y: 53 }, { x: 75, y: 53 }, { x: 25, y: 83, inverted: true }, { x: 75, y: 83, inverted: true }],
+  '8': [{ x: 25, y: 16 }, { x: 75, y: 16 }, { x: 50, y: 34 }, { x: 25, y: 50 }, { x: 75, y: 50 }, { x: 50, y: 66, inverted: true }, { x: 25, y: 84, inverted: true }, { x: 75, y: 84, inverted: true }],
+  '9': [{ x: 25, y: 15 }, { x: 75, y: 15 }, { x: 25, y: 36 }, { x: 75, y: 36 }, { x: 50, y: 50 }, { x: 25, y: 64, inverted: true }, { x: 75, y: 64, inverted: true }, { x: 25, y: 85, inverted: true }, { x: 75, y: 85, inverted: true }],
+  '10': [{ x: 25, y: 14 }, { x: 75, y: 14 }, { x: 50, y: 31 }, { x: 25, y: 46 }, { x: 75, y: 46 }, { x: 25, y: 54, inverted: true }, { x: 75, y: 54, inverted: true }, { x: 50, y: 69, inverted: true }, { x: 25, y: 86, inverted: true }, { x: 75, y: 86, inverted: true }],
 };
 
 const SIZE_CLASSES = {
@@ -65,52 +68,53 @@ function Corner({
     <span
       aria-hidden="true"
       className={cx(
-        'absolute flex flex-col items-center font-black leading-[0.75] tracking-[-0.08em]',
-        'text-[0.68rem] sm:text-[0.8rem]',
+        'absolute z-10 flex flex-col items-center font-sans font-black leading-[0.73] tracking-[-0.08em]',
+        'text-[0.63rem] sm:text-[0.76rem]',
         inverted ? 'bottom-1 right-1 rotate-180 sm:bottom-1.5 sm:right-1.5' : 'left-1 top-1 sm:left-1.5 sm:top-1.5',
       )}
     >
       <span>{rank}</span>
-      <span className="mt-0.5 text-[0.72rem] sm:text-[0.86rem]">{glyph}</span>
+      <span className="mt-0.5 text-[0.68rem] sm:text-[0.82rem]">{glyph}</span>
+    </span>
+  );
+}
+
+function CourtArt({ rank, glyph }: { rank: 'J' | 'Q' | 'K'; glyph: string }) {
+  const crown = rank === 'K' ? '♛' : rank === 'Q' ? '♕' : '◆';
+
+  return (
+    <span aria-hidden="true" className="absolute inset-x-[14%] inset-y-[10%] overflow-hidden border border-[#1f1f1f] bg-[#f8f5df] shadow-[inset_0_0_0_1px_#f6d928]">
+      <span className="absolute -left-[18%] top-[6%] h-[47%] w-[136%] -rotate-[28deg] bg-[#df1c24]" />
+      <span className="absolute -left-[16%] bottom-[6%] h-[47%] w-[136%] -rotate-[28deg] bg-[#151515]" />
+      <span className="absolute left-[8%] top-[13%] h-[74%] w-[84%] rotate-45 border-[0.18rem] border-[#f0d226]" />
+      <span className="absolute left-1/2 top-[12%] grid h-[27%] w-[45%] -translate-x-1/2 place-items-center rounded-t-[50%] border-2 border-[#191919] bg-[#e4c6a1] text-[0.68rem] text-[#141414] sm:text-[0.9rem]">
+        <span className="-mt-1 text-[0.6rem] leading-none sm:text-[0.82rem]">{crown}</span>
+        <span className="-mt-2 text-[0.55rem] font-black sm:text-[0.75rem]">•‿•</span>
+      </span>
+      <span className="absolute left-1/2 top-[36%] grid h-[29%] w-[69%] -translate-x-1/2 place-items-center border border-[#161616] bg-[#f2d42a] text-[1.15rem] font-black leading-none text-[#161616] sm:text-[1.65rem]">{rank}</span>
+      <span className="absolute bottom-[9%] left-1/2 text-[1rem] leading-none sm:text-[1.35rem]">{glyph}</span>
+      <span className="absolute right-[7%] top-[6%] text-[0.54rem] font-black text-[#161616] sm:text-[0.72rem]">{rank}</span>
     </span>
   );
 }
 
 function PipField({ rank, glyph }: { rank: CasinoCard['rank']; glyph: string }) {
-  const pipCount = NUMBER_OF_PIPS[rank];
-
   if (rank === 'A') {
-    return <span aria-hidden="true" className="text-[2.6rem] leading-none sm:text-[3.45rem]">{glyph}</span>;
+    return <span aria-hidden="true" className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[2.45rem] leading-none sm:text-[3.35rem]">{glyph}</span>;
   }
 
-  if (!pipCount) {
-    return (
-      <span
-        aria-hidden="true"
-        className="flex flex-col items-center font-black leading-none tracking-[-0.08em]"
-      >
-        <span className="text-[2.15rem] sm:text-[3rem]">{rank}</span>
-        <span className="mt-0.5 text-[1.35rem] sm:text-[1.8rem]">{glyph}</span>
-      </span>
-    );
+  if (rank === 'J' || rank === 'Q' || rank === 'K') {
+    return <CourtArt rank={rank} glyph={glyph} />;
   }
 
+  const positions = PIP_LAYOUTS[rank] ?? [];
   return (
-    <span
-      aria-hidden="true"
-      className={cx(
-        'grid w-[62%] grid-cols-2 place-items-center gap-y-0.5 leading-none sm:gap-y-1',
-        pipCount % 2 === 1 && 'grid-cols-3',
-      )}
-    >
-      {Array.from({ length: pipCount }, (_, index) => (
+    <span aria-hidden="true" className="absolute inset-[7%]">
+      {positions.map((position, index) => (
         <span
           key={index}
-          className={cx(
-            'text-[1rem] sm:text-[1.28rem]',
-            pipCount % 2 === 1 && index === Math.floor(pipCount / 2) && 'col-span-3',
-            index >= Math.ceil(pipCount / 2) && 'rotate-180',
-          )}
+          className={cx('absolute -translate-x-1/2 -translate-y-1/2 text-[1rem] leading-none sm:text-[1.32rem]', position.inverted && 'rotate-180')}
+          style={{ left: `${position.x}%`, top: `${position.y}%` }}
         >
           {glyph}
         </span>
@@ -161,8 +165,8 @@ export function PlayingCard({
     ? 'Face-down card'
     : `${card.rank} of ${SUIT_DETAILS[card.suit].name}`);
   const shellClasses = cx(
-    'relative aspect-[5/7] shrink-0 overflow-hidden rounded-[0.52rem] border border-slate-300',
-    'bg-[#fffef8] shadow-[0_0.22rem_0.38rem_rgba(0,0,0,0.38)]',
+    'relative aspect-[5/7] shrink-0 overflow-hidden rounded-[0.42rem] border border-[#cfd4d5]',
+    'bg-white shadow-[0_0.2rem_0.36rem_rgba(0,0,0,0.34)]',
     'select-none transition-transform duration-150 ease-out',
     SIZE_CLASSES[size],
     dealt && 'animate-[deal-card_220ms_ease-out_both]',
