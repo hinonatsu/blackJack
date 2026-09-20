@@ -157,6 +157,22 @@ export function useActionHotkeys(
   }, [enabled, onAction]);
 }
 
+/** Advances feedback screens with Space while preserving normal text input. */
+export function useSpaceAdvance(callback: () => void, enabled = true): void {
+  useEffect(() => {
+    if (!enabled) return undefined;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.code !== "Space" || event.repeat || event.metaKey || event.ctrlKey || event.altKey || isTypingTarget(event.target)) return;
+      event.preventDefault();
+      callback();
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [callback, enabled]);
+}
+
 /** Schedules Fast Mode's short feedback pause and cleans up on question changes. */
 export function useAutoAdvance(
   callback: () => void,

@@ -10,6 +10,7 @@ import { applyHiLoCards, hiLoValue } from "@/lib/hiloCount";
 import { calculateTrueCount, decksRemainingFromCards } from "@/lib/trueCount";
 import { countingWeaknessContext, strategyWeaknessContexts, trueCountWeaknessContext } from "@/lib/training/session";
 import type { ModePerformance, TrainingAttempt } from "@/lib/training/types";
+import { useSpaceAdvance } from "@/hooks/useTrainingSession";
 import type { BlackjackRules, Card, HandSettlement, PlayerAction, PlayerHand, ShoeState } from "@/types";
 
 type LivePhase = "BETTING" | "INSURANCE" | "PLAYER_TURN" | "SETTLED";
@@ -226,6 +227,7 @@ export function FullTableSimulation({ rules, onBack, onRecord, performance }: { 
   const submitCountFeedback = () => { const rcCorrect = Number(rcAnswer) === game.runningCount; const tcCorrect = Number(tcAnswer) === actualTc; const correct = scope === "basic" ? true : scope === "counting" ? rcCorrect && tcCorrect : rcCorrect && tcCorrect && (game.actionReview?.correct ?? true); setCountFeedback({ correct, message: `Count: Your RC ${rcAnswer || "—"} / Actual RC ${formatSigned(game.runningCount)} · Your TC ${tcAnswer || "—"} / Actual TC ${formatSigned(actualTc)}.` }); if (scope !== "basic") onRecord({ mode: "full-table", correct: rcCorrect && tcCorrect, weaknesses: [countingWeaknessContext("Full Table Running Count"), trueCountWeaknessContext("Full Table True Count")] }); };
   const nextRound = () => { setGame((current) => ({ ...current, phase: "BETTING", playerHands: [], dealerCards: [], activeHandIndex: null, settlements: [], insuranceWagerCents: 0, actionReview: null, notice: shouldReshuffleBeforeRound(current.shoe) ? "CUT CARD reached — next hand will shuffle." : null })); setCountFeedback(null); setRcAnswer(""); setTcAnswer(""); };
   const resetBankroll = () => { setGame(blankGame(rules)); setCountFeedback(null); };
+  useSpaceAdvance(nextRound, game.phase === "SETTLED" && (scope === "basic" || Boolean(countFeedback)));
 
   return <div className={`mx-auto w-full max-w-7xl px-3 pb-10 sm:px-6 ${casinoMode ? "pt-1" : ""}`}>
     {!casinoMode && <div className="mb-4 flex flex-wrap items-start justify-between gap-3"><div><p className="text-[0.62rem] font-black tracking-[0.18em] text-amber-200">LIVE SHOE</p><h1 className="font-serif text-2xl font-black tracking-wide text-white sm:text-3xl">FULL TABLE SIMULATION</h1><p className="mt-1 text-sm text-emerald-50/70">Shoeから実際に312 cardsを消費します。結果には短期Varianceがあります。</p></div><div className="w-full max-w-sm sm:w-80"><Stats stats={performance} title="SESSION" compact /></div></div>}

@@ -18,7 +18,7 @@ import {
 import { countingWeaknessContext, deviationWeaknessContext, strategyWeaknessContexts, trueCountWeaknessContext } from "@/lib/training/session";
 import type { ModePerformance, StrategyQuestion, StrategySituation, TrainingAttempt, TrainingMode, WeaknessReview } from "@/lib/training/types";
 import type { Card, BlackjackRules, PlayerAction, Rank } from "@/types";
-import { useActionHotkeys, useAutoAdvance } from "@/hooks/useTrainingSession";
+import { useActionHotkeys, useAutoAdvance, useSpaceAdvance } from "@/hooks/useTrainingSession";
 
 type Feedback = { correct: boolean; correctAction?: string; message?: string; responseMs?: number };
 
@@ -45,6 +45,7 @@ export function StrategyDrill({ mode, rules, onBack, onRecord, performance, init
   const next = useCallback(() => { setQuestion(makeQuestion(initialSituation)); setFeedback(null); startedAt.current = Date.now(); }, [initialSituation, makeQuestion]);
   useEffect(() => { next(); }, [rules, next]);
   useAutoAdvance(next, Boolean(feedback && fastMode), 680);
+  useSpaceAdvance(next, Boolean(feedback));
 
   const submit = useCallback((action: PlayerAction) => {
     if (feedback) return;
@@ -84,6 +85,7 @@ export function HiLoDrill({ onBack, onRecord, performance }: { onBack: () => voi
 
   const next = useCallback((nextLevel = level) => { setLevel(nextLevel); setSequence(generateCountSequenceQuestion({ level: nextLevel })); if (nextLevel >= 3) setTable(generateTableCountQuestion({ level: nextLevel as 3 | 4 })); setStarted(nextLevel === 1); setShown(nextLevel === 1 ? 1 : 0); setAnswer(""); setFeedback(null); startAt.current = Date.now(); }, [level]);
   useEffect(() => { if (level !== 2 || !started || feedback) return; if (shown >= sequence.ranks.length) return; const timer = window.setTimeout(() => setShown((value) => value + 1), SPEEDS[speed]); return () => window.clearTimeout(timer); }, [feedback, level, sequence.ranks.length, shown, speed, started]);
+  useSpaceAdvance(() => next(level), Boolean(feedback));
 
   const answerCount = (candidate: number) => { if (feedback || (level === 2 && shown < sequence.ranks.length) || (isTable && !started)) return; const correct = candidate === expected; const responseMs = Date.now() - startAt.current; setFeedback({ correct, message: correct ? "Count maintained." : "You lost the count here.", responseMs }); onRecord({ mode: "hilo", correct, responseMs, weaknesses: [countingWeaknessContext(`Hi-Lo Level ${level}`)] }); };
   const visibleRanks = level === 1 ? sequence.ranks : level === 2 ? (shown === 0 ? [] : sequence.ranks.slice(Math.max(0, shown - 1), shown)) : activeRanks;
@@ -112,6 +114,7 @@ export function TrueCountDrill({ initialPanel, onBack, onRecord, performance }: 
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const startAt = useRef(Date.now());
   const next = (kind = panel) => { setPanel(kind); setAnswer(""); setFeedback(null); startAt.current = Date.now(); if (kind === "true") setTcQuestion(generateTrueCountQuestion()); else setDeckQuestion(generateDeckEstimationQuestion()); };
+  useSpaceAdvance(next, Boolean(feedback));
   const submitTc = () => { if (feedback) return; const correct = isTrueCountCorrect(Number(answer), tcQuestion); const responseMs = Date.now() - startAt.current; setFeedback({ correct, message: `RC ${sign(tcQuestion.runningCount)} ÷ ${tcQuestion.decksRemaining} decks = ${tcQuestion.rawTrueCount.toFixed(2)} → ${sign(tcQuestion.expectedTrueCount)} (${tcQuestion.rounding})`, responseMs }); onRecord({ mode: "true-count", correct, responseMs, weaknesses: [trueCountWeaknessContext()] }); };
   const submitDeck = (value: number) => { if (feedback) return; const correct = isDeckEstimateCorrect(value, deckQuestion); const responseMs = Date.now() - startAt.current; setFeedback({ correct, message: `Correct estimate: ${deckQuestion.decksRemaining} decks remaining.`, responseMs }); onRecord({ mode: "true-count", correct, responseMs, weaknesses: [trueCountWeaknessContext("Deck Estimation")] }); };
   const activeShoe = panel === "true" ? tcQuestion.deckEstimate : deckQuestion;
@@ -133,6 +136,7 @@ export function DeviationDrill({ rules, onBack, onRecord, performance }: { rules
   const startAt = useRef(Date.now());
   const next = useCallback(() => { setQuestion(makeDeviation(deviations, rules)); setFeedback(null); startAt.current = Date.now(); }, [deviations, rules]);
   useEffect(() => { next(); }, [next]);
+  useSpaceAdvance(next, Boolean(feedback));
   const expected = getDeviationAction(question.deviation, question.trueCount, rules.dealerSoft17);
   const submit = (action: DeviationAction) => { if (feedback) return; const correct = action === expected; const responseMs = Date.now() - startAt.current; setFeedback({ correct, correctAction: expected, message: `Index ${question.deviation.indexBySoft17[rules.dealerSoft17]} (${rules.dealerSoft17}, floored TC).`, responseMs }); onRecord({ mode: "deviations", correct, responseMs, weaknesses: [deviationWeaknessContext(question.deviation.id, question.deviation.playerHand)] }); };
   const insurance = question.deviation.handKind === "INSURANCE";
