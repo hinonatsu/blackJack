@@ -3,9 +3,29 @@ import { describe, expect, it } from "vitest";
 import { getBasicStrategyAction, getBasicStrategyDecision } from "@/lib/basicStrategy";
 import { getDeviationAction, getDeviationDecision, HI_LO_DEVIATIONS } from "@/lib/deviations";
 import { mergeRules } from "@/types/rules";
+import type { Rank } from "@/types/card";
 import { card, cards } from "./helpers";
 
 const noSurrender = mergeRules({ lateSurrender: false });
+const pdfRules = mergeRules({ deckCount: 6, dealerSoft17: "H17", doubleAfterSplit: true, lateSurrender: true });
+const chartDealerRanks: Rank[] = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "A"];
+const chartActions = {
+  H: "HIT",
+  S: "STAND",
+  D: "DOUBLE",
+  P: "SPLIT",
+  R: "SURRENDER",
+} as const;
+type ChartCode = keyof typeof chartActions;
+
+function expectPdfChartRow(playerRanks: Rank[], expected: readonly ChartCode[]): void {
+  expected.forEach((code, index) => {
+    expect(
+      getBasicStrategyAction(cards(...playerRanks), card(chartDealerRanks[index]!), pdfRules),
+      `${playerRanks.join(",")} vs ${chartDealerRanks[index]}`,
+    ).toBe(chartActions[code]);
+  });
+}
 
 describe("basic strategy", () => {
   it("covers core hard totals", () => {
@@ -55,6 +75,44 @@ describe("basic strategy", () => {
     expect(getBasicStrategyAction(cards("A", "7"), card("2"), doubleDeck)).toBe("STAND");
     expect(getBasicStrategyAction(cards("6", "6"), card("7"), doubleDeck)).toBe("SPLIT");
     expect(getBasicStrategyAction(cards("7", "7"), card("8"), doubleDeck)).toBe("SPLIT");
+  });
+
+  it("matches every actionable row of the supplied 6-deck H17, DAS, Late Surrender chart", () => {
+    expectPdfChartRow(["2", "3"], ["H", "H", "H", "H", "H", "H", "H", "H", "H", "H"]);
+    expectPdfChartRow(["2", "4"], ["H", "H", "H", "H", "H", "H", "H", "H", "H", "H"]);
+    expectPdfChartRow(["2", "5"], ["H", "H", "H", "H", "H", "H", "H", "H", "H", "H"]);
+    expectPdfChartRow(["2", "6"], ["H", "H", "H", "H", "H", "H", "H", "H", "H", "H"]);
+    expectPdfChartRow(["4", "5"], ["H", "D", "D", "D", "D", "H", "H", "H", "H", "H"]);
+    expectPdfChartRow(["4", "6"], ["D", "D", "D", "D", "D", "D", "D", "D", "H", "H"]);
+    expectPdfChartRow(["5", "6"], ["D", "D", "D", "D", "D", "D", "D", "D", "D", "D"]);
+    expectPdfChartRow(["5", "7"], ["H", "H", "S", "S", "S", "H", "H", "H", "H", "H"]);
+    expectPdfChartRow(["5", "8"], ["S", "S", "S", "S", "S", "H", "H", "H", "H", "H"]);
+    expectPdfChartRow(["6", "8"], ["S", "S", "S", "S", "S", "H", "H", "H", "H", "H"]);
+    expectPdfChartRow(["7", "8"], ["S", "S", "S", "S", "S", "H", "H", "H", "R", "R"]);
+    expectPdfChartRow(["7", "9"], ["S", "S", "S", "S", "S", "H", "H", "R", "R", "R"]);
+    expectPdfChartRow(["8", "9"], ["S", "S", "S", "S", "S", "S", "S", "S", "S", "R"]);
+    expectPdfChartRow(["8", "10"], ["S", "S", "S", "S", "S", "S", "S", "S", "S", "S"]);
+
+    expectPdfChartRow(["A", "2"], ["H", "H", "H", "D", "D", "H", "H", "H", "H", "H"]);
+    expectPdfChartRow(["A", "3"], ["H", "H", "H", "D", "D", "H", "H", "H", "H", "H"]);
+    expectPdfChartRow(["A", "4"], ["H", "H", "D", "D", "D", "H", "H", "H", "H", "H"]);
+    expectPdfChartRow(["A", "5"], ["H", "H", "D", "D", "D", "H", "H", "H", "H", "H"]);
+    expectPdfChartRow(["A", "6"], ["H", "D", "D", "D", "D", "H", "H", "H", "H", "H"]);
+    expectPdfChartRow(["A", "7"], ["D", "D", "D", "D", "D", "S", "S", "H", "H", "H"]);
+    expectPdfChartRow(["A", "8"], ["S", "S", "S", "S", "D", "S", "S", "S", "S", "S"]);
+    expectPdfChartRow(["A", "9"], ["S", "S", "S", "S", "S", "S", "S", "S", "S", "S"]);
+    expectPdfChartRow(["A", "10"], ["S", "S", "S", "S", "S", "S", "S", "S", "S", "S"]);
+
+    expectPdfChartRow(["2", "2"], ["P", "P", "P", "P", "P", "P", "H", "H", "H", "H"]);
+    expectPdfChartRow(["3", "3"], ["P", "P", "P", "P", "P", "P", "H", "H", "H", "H"]);
+    expectPdfChartRow(["4", "4"], ["H", "H", "H", "P", "P", "H", "H", "H", "H", "H"]);
+    expectPdfChartRow(["5", "5"], ["D", "D", "D", "D", "D", "D", "D", "D", "H", "H"]);
+    expectPdfChartRow(["6", "6"], ["P", "P", "P", "P", "P", "H", "H", "H", "H", "H"]);
+    expectPdfChartRow(["7", "7"], ["P", "P", "P", "P", "P", "P", "H", "H", "H", "H"]);
+    expectPdfChartRow(["8", "8"], ["P", "P", "P", "P", "P", "P", "P", "P", "P", "R"]);
+    expectPdfChartRow(["9", "9"], ["P", "P", "P", "P", "P", "S", "P", "P", "S", "S"]);
+    expectPdfChartRow(["10", "10"], ["S", "S", "S", "S", "S", "S", "S", "S", "S", "S"]);
+    expectPdfChartRow(["A", "A"], ["P", "P", "P", "P", "P", "P", "P", "P", "P", "P"]);
   });
 });
 

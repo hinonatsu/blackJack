@@ -312,6 +312,10 @@ function shouldLateSurrender(
   const canSurrender = options.canSurrender ?? (!options.isSplitHand && hand.cards.length === 2);
   if (!rules.lateSurrender || !canSurrender) return false;
 
+  // The chart's surrender rows are hard totals only. A soft total such as
+  // A,4 must keep following the Soft table even when its numeric total is 15.
+  if (hand.kind === "SOFT") return false;
+
   if (hand.kind === "PAIR" && hand.pairRank === "8") {
     return rules.deckCount >= 6 && rules.dealerSoft17 === "H17" && dealerUpcard === "A";
   }
