@@ -1,6 +1,7 @@
 import {
   TRAINING_MODES,
   type AttemptHistoryItem,
+  type DailyProgress,
   type ModePerformance,
   type ModeStats,
   type StrategySituation,
@@ -11,10 +12,12 @@ import {
   type WeaknessDimension,
   type WeaknessReview,
   type WeaknessStat,
+  type WeeklyProgress,
 } from "./types";
 
-export const TRAINING_SESSION_VERSION = 1 as const;
+export const TRAINING_SESSION_VERSION = 2 as const;
 export const RECENT_ATTEMPT_LIMIT = 100;
+export const DAILY_STATS_RETENTION_DAYS = 35;
 
 function createEmptyModeStats(): ModeStats {
   return {
@@ -33,6 +36,47 @@ function createModeStatsRecord(): Record<TrainingMode, ModeStats> {
   ) as Record<TrainingMode, ModeStats>;
 }
 
+function localDayKey(timestamp: number): string {
+  const date = new Date(timestamp);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function dayKeyBefore(now: number, daysAgo: number): string {
+  const date = new Date(now);
+  date.setHours(12, 0, 0, 0);
+  date.setDate(date.getDate() - daysAgo);
+  return localDayKey(date.getTime());
+}
+
+function retainRecentDailyStats(
+  dailyStats: TrainingSessionState["dailyStats"],
+  now: number,
+): TrainingSessionState["dailyStats"] {
+  const oldestDay = dayKeyBefore(now, DAILY_STATS_RETENTION_DAYS - 1);
+  return Object.fromEntries(
+    Object.entries(dailyStats).filter(([day]) => day >= oldestDay),
+  ) as TrainingSessionState["dailyStats"];
+}
+
+function aggregateModeStats(
+  statsByMode: Record<TrainingMode, ModeStats> | undefined,
+): ModeStats {
+  return TRAINING_MODES.reduce<ModeStats>((total, mode) => {
+    const stats = statsByMode?.[mode] ?? createEmptyModeStats();
+    return {
+      attempts: total.attempts + stats.attempts,
+      correct: total.correct + stats.correct,
+      totalResponseMs: total.totalResponseMs + stats.totalResponseMs,
+      timedAttempts: total.timedAttempts + stats.timedAttempts,
+      currentStreak: 0,
+      bestStreak: Math.max(total.bestStreak, stats.bestStreak),
+    };
+  }, createEmptyModeStats());
+}
+
 /** Creates a serializable blank state, suitable for an in-memory or browser session. */
 export function createTrainingSession(now = Date.now()): TrainingSessionState {
   return {
@@ -40,6 +84,7 @@ export function createTrainingSession(now = Date.now()): TrainingSessionState {
     createdAt: now,
     updatedAt: now,
     modeStats: createModeStatsRecord(),
+    dailyStats: {},
     weaknesses: {},
     recentAttempts: [],
   };
@@ -143,6 +188,18 @@ export function recordTrainingAttempt(
     answeredAt,
     weaknessKeys: contexts.map((context) => context.key),
   };
+  const day = localDayKey(answeredAt);
+  const dailyModeStats = session.dailyStats[day] ?? createModeStatsRecord();
+  const dailyStats = retainRecentDailyStats(
+    {
+      ...session.dailyStats,
+      [day]: {
+        ...dailyModeStats,
+        [attempt.mode]: updateModeStats(dailyModeStats[attempt.mode], attempt),
+      },
+    },
+    answeredAt,
+  );
 
   return {
     ...session,
@@ -151,6 +208,7 @@ export function recordTrainingAttempt(
       ...session.modeStats,
       [attempt.mode]: updateModeStats(session.modeStats[attempt.mode], attempt),
     },
+    dailyStats,
     weaknesses,
     recentAttempts: [...session.recentAttempts, historyItem].slice(-RECENT_ATTEMPT_LIMIT),
   };
@@ -174,6 +232,56 @@ export function getAllModePerformance(
       getModePerformance(session.modeStats[mode] ?? createEmptyModeStats()),
     ]),
   ) as Record<TrainingMode, ModePerformance>;
+}
+
+/** Summarizes the latest seven local calendar days across every practice mode. */
+export function getWeeklyProgress(
+  session: TrainingSessionState,
+  now = Date.now(),
+): WeeklyProgress {
+  const dailyTotals = Array.from({ length: 7 }, (_, index) => {
+    const date = dayKeyBefore(now, 6 - index);
+    return { date, stats: aggregateModeStats(session.dailyStats[date]) };
+  });
+  const days: DailyProgress[] = dailyTotals.map(({ date, stats }) => {
+    const performance = getModePerformance(stats);
+    return {
+      date,
+      attempts: performance.attempts,
+      correct: performance.correct,
+      accuracy: performance.accuracy,
+      averageResponseMs: performance.averageResponseMs,
+    };
+  });
+  const allStats = dailyTotals.reduce<ModeStats>((total, { stats }) => ({
+    attempts: total.attempts + stats.attempts,
+    correct: total.correct + stats.correct,
+    totalResponseMs: total.totalResponseMs + stats.totalResponseMs,
+    timedAttempts: total.timedAttempts + stats.timedAttempts,
+    currentStreak: 0,
+    bestStreak: Math.max(total.bestStreak, stats.bestStreak),
+  }), createEmptyModeStats());
+  const activeDays = days.filter((day) => day.attempts > 0);
+  const first = activeDays[0];
+  const latest = activeDays.at(-1);
+  const totals = getModePerformance(allStats);
+
+  return {
+    days,
+    activeDays: activeDays.length,
+    attempts: totals.attempts,
+    correct: totals.correct,
+    accuracy: totals.accuracy,
+    averageResponseMs: totals.averageResponseMs,
+    accuracyChange:
+      activeDays.length >= 2 && first && latest
+        ? (latest.accuracy - first.accuracy) * 100
+        : null,
+    responseTimeChangeMs:
+      activeDays.length >= 2 && first && latest && first.averageResponseMs !== null && latest.averageResponseMs !== null
+        ? latest.averageResponseMs - first.averageResponseMs
+        : null,
+  };
 }
 
 export function toWeaknessReview(stat: WeaknessStat): WeaknessReview {

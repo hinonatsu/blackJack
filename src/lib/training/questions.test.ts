@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { VEGAS_SIX_DECK_RULES } from "../../types/rules";
 import {
   generateDeckEstimationQuestion,
+  generateBasicStrategyQuestion,
   generateStrategyQuestion,
   generateTrueCountQuestion,
   countTrailForRanks,
@@ -42,6 +43,25 @@ describe("training question utilities", () => {
     expect(question.playerCards.map((card) => card.rank)).toEqual(["A", "2"]);
     expect(question.expectedAction).toBe("HIT");
     expect(question.reason).toBe("Test decision");
+  });
+
+  it("uses the same rules-aware engine for the action that the UI grades", () => {
+    const question = generateBasicStrategyQuestion({
+      rules: VEGAS_SIX_DECK_RULES,
+      situation: {
+        handKind: "soft",
+        total: 15,
+        dealerValue: 10,
+        playerLabel: "Soft 15",
+        dealerLabel: "10",
+      },
+      now: 1_000,
+      random: () => 0,
+    });
+
+    // The supplied H17 / Late Surrender chart says Hit. This also guards
+    // against treating a soft 15 as a hard 15 surrender decision.
+    expect(question.expectedAction).toBe("HIT");
   });
 
   it("uses half-deck visual estimates and an explicit true-count rounding rule", () => {

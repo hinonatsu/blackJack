@@ -6,6 +6,7 @@ import { clearTrainingSession, loadTrainingSession, saveTrainingSession, type St
 import {
   createTrainingSession,
   getAllModePerformance,
+  getWeeklyProgress,
   getWeaknessReview,
   recordTrainingAttempt,
   type WeaknessReviewOptions,
@@ -29,14 +30,15 @@ export interface TrainingSessionController {
   session: TrainingSessionState;
   hydrated: boolean;
   modePerformance: ReturnType<typeof getAllModePerformance>;
+  weeklyProgress: ReturnType<typeof getWeeklyProgress>;
   weaknessReview: WeaknessReview[];
   recordAttempt: (attempt: TrainingAttempt) => void;
   resetSession: () => void;
 }
 
 /**
- * Browser-session state for all practice modes. It starts safely during SSR,
- * hydrates from sessionStorage on mount, and persists each completed answer.
+ * Browser-persistent state for all practice modes. It starts safely during SSR,
+ * hydrates from localStorage on mount, and persists each completed answer.
  */
 export function useTrainingSession(
   options: UseTrainingSessionOptions = {},
@@ -66,6 +68,7 @@ export function useTrainingSession(
   }, [storage, storageKey]);
 
   const modePerformance = useMemo(() => getAllModePerformance(session), [session]);
+  const weeklyProgress = useMemo(() => getWeeklyProgress(session), [session]);
   const weaknessReview = useMemo(
     () => getWeaknessReview(session, weaknessOptions),
     [session, weaknessOptions],
@@ -75,6 +78,7 @@ export function useTrainingSession(
     session,
     hydrated,
     modePerformance,
+    weeklyProgress,
     weaknessReview,
     recordAttempt,
     resetSession,

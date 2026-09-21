@@ -7,8 +7,9 @@ import {
   type WeaknessStat,
 } from "./types";
 
-/** Tab-scoped by design: practice results survive refreshes, not indefinitely. */
-export const TRAINING_SESSION_STORAGE_KEY = "vegas-blackjack-trainer:session:v1";
+/** Persistent so the 7-day growth view survives closing the browser. */
+export const TRAINING_SESSION_STORAGE_KEY = "vegas-blackjack-trainer:session:v2";
+const LEGACY_TRAINING_SESSION_STORAGE_KEY = "vegas-blackjack-trainer:session:v1";
 
 export interface StorageLike {
   getItem(key: string): string | null;
@@ -16,13 +17,23 @@ export interface StorageLike {
   removeItem(key: string): void;
 }
 
-function browserSessionStorage(): StorageLike | undefined {
+function browserLocalStorage(): StorageLike | undefined {
+  if (typeof window === "undefined") return undefined;
+
+  try {
+    return window.localStorage;
+  } catch {
+    // Storage can be blocked in privacy contexts. The app should still practice in memory.
+    return undefined;
+  }
+}
+
+function browserLegacySessionStorage(): StorageLike | undefined {
   if (typeof window === "undefined") return undefined;
 
   try {
     return window.sessionStorage;
   } catch {
-    // Storage can be blocked in privacy contexts. The app should still practice in memory.
     return undefined;
   }
 }
@@ -47,6 +58,61 @@ function safeModeStats(value: unknown): ModeStats {
     currentStreak,
     bestStreak,
   };
+}
+
+function safeDailyStats(value: unknown): TrainingSessionState["dailyStats"] {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>).flatMap(([date, candidate]) => {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
+        return [];
+      }
+      const source = candidate as Partial<Record<TrainingMode, unknown>>;
+      const stats = Object.fromEntries(
+        TRAINING_MODES.map((mode) => [mode, safeModeStats(source[mode])]),
+      ) as Record<TrainingMode, ModeStats>;
+      return [[date, stats] as const];
+    }),
+  ) as TrainingSessionState["dailyStats"];
+}
+
+function localDayKey(timestamp: number): string {
+  const date = new Date(timestamp);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+/** Restores a useful 7-day view when upgrading a pre-v2 session record. */
+function dailyStatsFromRecentAttempts(
+  attempts: TrainingSessionState["recentAttempts"],
+): TrainingSessionState["dailyStats"] {
+  return attempts.reduce<TrainingSessionState["dailyStats"]>((dailyStats, attempt) => {
+    const day = localDayKey(attempt.answeredAt);
+    const statsByMode = dailyStats[day] ?? Object.fromEntries(
+      TRAINING_MODES.map((mode) => [mode, safeModeStats(undefined)]),
+    ) as Record<TrainingMode, ModeStats>;
+    const current = statsByMode[attempt.mode];
+    const responseMs = attempt.responseMs;
+    const currentStreak = attempt.correct ? current.currentStreak + 1 : 0;
+
+    return {
+      ...dailyStats,
+      [day]: {
+        ...statsByMode,
+        [attempt.mode]: {
+          attempts: current.attempts + 1,
+          correct: current.correct + (attempt.correct ? 1 : 0),
+          totalResponseMs: current.totalResponseMs + (responseMs ?? 0),
+          timedAttempts: current.timedAttempts + (responseMs === undefined ? 0 : 1),
+          currentStreak,
+          bestStreak: Math.max(current.bestStreak, currentStreak),
+        },
+      },
+    };
+  }, {});
 }
 
 function safeWeaknesses(value: unknown): Record<string, WeaknessStat> {
@@ -117,8 +183,8 @@ export function parseTrainingSession(raw: string, fallbackNow = Date.now()): Tra
   try {
     const parsed: unknown = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
-    const input = parsed as Partial<TrainingSessionState>;
-    if (input.version !== TRAINING_SESSION_VERSION) return null;
+    const input = parsed as Omit<Partial<TrainingSessionState>, "version"> & { version?: number };
+    if (input.version !== 1 && input.version !== TRAINING_SESSION_VERSION) return null;
 
     const modeStatsInput = input.modeStats && typeof input.modeStats === "object" ? input.modeStats : {};
     const modeStats = Object.fromEntries(
@@ -128,13 +194,19 @@ export function parseTrainingSession(raw: string, fallbackNow = Date.now()): Tra
       ]),
     ) as Record<TrainingMode, ModeStats>;
 
+    const recentAttempts = safeRecentAttempts(input.recentAttempts);
+    const dailyStats = safeDailyStats(input.dailyStats);
+
     return {
       version: TRAINING_SESSION_VERSION,
       createdAt: finiteNonNegative(input.createdAt, fallbackNow),
       updatedAt: finiteNonNegative(input.updatedAt, fallbackNow),
       modeStats,
+      dailyStats: Object.keys(dailyStats).length > 0
+        ? dailyStats
+        : dailyStatsFromRecentAttempts(recentAttempts),
       weaknesses: safeWeaknesses(input.weaknesses),
-      recentAttempts: safeRecentAttempts(input.recentAttempts),
+      recentAttempts,
     };
   } catch {
     return null;
@@ -142,15 +214,22 @@ export function parseTrainingSession(raw: string, fallbackNow = Date.now()): Tra
 }
 
 export function loadTrainingSession(
-  storage: StorageLike | undefined = browserSessionStorage(),
+  storage?: StorageLike,
   key = TRAINING_SESSION_STORAGE_KEY,
   now = Date.now(),
 ): TrainingSessionState {
-  if (!storage) return createTrainingSession(now);
+  const resolvedStorage = storage ?? browserLocalStorage();
 
   try {
-    const raw = storage.getItem(key);
-    return raw ? parseTrainingSession(raw, now) ?? createTrainingSession(now) : createTrainingSession(now);
+    const raw = resolvedStorage?.getItem(key);
+    if (raw) return parseTrainingSession(raw, now) ?? createTrainingSession(now);
+
+    if (!storage && key === TRAINING_SESSION_STORAGE_KEY) {
+      const legacy = browserLegacySessionStorage()?.getItem(LEGACY_TRAINING_SESSION_STORAGE_KEY);
+      if (legacy) return parseTrainingSession(legacy, now) ?? createTrainingSession(now);
+    }
+
+    return createTrainingSession(now);
   } catch {
     return createTrainingSession(now);
   }
@@ -159,12 +238,13 @@ export function loadTrainingSession(
 /** Returns false instead of throwing when browser storage is unavailable. */
 export function saveTrainingSession(
   session: TrainingSessionState,
-  storage: StorageLike | undefined = browserSessionStorage(),
+  storage?: StorageLike,
   key = TRAINING_SESSION_STORAGE_KEY,
 ): boolean {
-  if (!storage) return false;
+  const resolvedStorage = storage ?? browserLocalStorage();
+  if (!resolvedStorage) return false;
   try {
-    storage.setItem(key, JSON.stringify(session));
+    resolvedStorage.setItem(key, JSON.stringify(session));
     return true;
   } catch {
     return false;
@@ -172,12 +252,16 @@ export function saveTrainingSession(
 }
 
 export function clearTrainingSession(
-  storage: StorageLike | undefined = browserSessionStorage(),
+  storage?: StorageLike,
   key = TRAINING_SESSION_STORAGE_KEY,
 ): boolean {
-  if (!storage) return false;
+  const resolvedStorage = storage ?? browserLocalStorage();
+  if (!resolvedStorage) return false;
   try {
-    storage.removeItem(key);
+    resolvedStorage.removeItem(key);
+    if (!storage && key === TRAINING_SESSION_STORAGE_KEY) {
+      browserLegacySessionStorage()?.removeItem(LEGACY_TRAINING_SESSION_STORAGE_KEY);
+    }
     return true;
   } catch {
     return false;

@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { Stats } from "@/components/Stats";
+import { WeeklyProgress } from "@/components/WeeklyProgress";
 import { formatCurrency } from "@/components/ui";
 import { DEFAULT_RULES, mergeRules, type BlackjackRules, type DeckCount } from "@/types";
 import { useTrainingSession } from "@/hooks/useTrainingSession";
@@ -116,6 +117,7 @@ function HomeDashboard({ open, training }: { open: (screen: Screen) => void; tra
         <div className="absolute -right-10 -top-16 h-56 w-56 rounded-full border border-amber-200/10 bg-amber-200/5" />
         <div className="relative max-w-3xl"><p className="mb-2 text-xs font-black tracking-[0.22em] text-amber-200">LAS VEGAS PREP</p><h1 className="font-serif text-3xl font-black tracking-tight text-white sm:text-5xl">カードを見た瞬間に、<br /><span className="text-amber-200">正しいAction</span>を選ぶ。</h1><p className="mt-4 max-w-2xl text-sm leading-6 text-emerald-50/75 sm:text-base">Basic Strategy、Hi-Lo、True Count、Index Playを、カジノのテーブルに近いテンポで反復します。短期の結果はVarianceに左右されます。</p></div>
       </section>
+      <div className="mt-6"><WeeklyProgress progress={training.weeklyProgress} /></div>
       <section className="mt-6"><div className="mb-3 flex items-end justify-between gap-3"><div><h2 className="font-serif text-xl font-black tracking-wide text-amber-100">TRAINING MODES</h2><p className="mt-1 text-xs text-emerald-50/65">Accuracy / Average response time / Best streak はこのSession内で保持されます。</p></div><button type="button" onClick={() => open("deck-estimation")} className="focus-ring rounded-lg border border-white/20 bg-black/15 px-3 py-2 text-xs font-bold text-emerald-50 hover:bg-white/10">DECK ESTIMATION</button></div>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{MODE_CARDS.map((mode) => <button key={mode.id} type="button" onClick={() => open(mode.id)} className={`focus-ring group rounded-2xl border bg-black/20 p-4 text-left transition duration-150 hover:-translate-y-0.5 ${mode.accent}`}><div className="mb-3 flex items-center justify-between"><span className="font-serif text-2xl font-black text-amber-100/85">{mode.kicker}</span><span className="rounded-full border border-white/15 px-2 py-1 text-[0.55rem] font-black tracking-[0.13em] text-emerald-50/70">START →</span></div><h3 className="text-lg font-black text-white">{mode.title}</h3><p className="mt-1 min-h-10 text-xs leading-5 text-emerald-50/70">{mode.description}</p><div className="mt-3"><Stats stats={training.modePerformance[mode.statsMode]} title="SESSION" compact /></div></button>)}</div>
       </section>

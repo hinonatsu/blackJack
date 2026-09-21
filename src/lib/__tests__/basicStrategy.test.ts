@@ -51,6 +51,8 @@ describe("basic strategy", () => {
     expect(getBasicStrategyAction(cards("A", "7"), card("2"), h17, { canDouble: false })).toBe("STAND");
     expect(getBasicStrategyAction(cards("5", "6"), card("A"), s17)).toBe("HIT");
     expect(getBasicStrategyAction(cards("5", "6"), card("A"), h17)).toBe("DOUBLE");
+    expect(getBasicStrategyAction(cards("4", "5"), card("3"), h17, { canDouble: false })).toBe("HIT");
+    expect(getBasicStrategyAction(cards("A", "8"), card("6"), h17, { canDouble: false })).toBe("STAND");
   });
 
   it("changes pair strategy with DAS and includes late surrender", () => {
@@ -92,6 +94,8 @@ describe("basic strategy", () => {
     expectPdfChartRow(["7", "9"], ["S", "S", "S", "S", "S", "H", "H", "R", "R", "R"]);
     expectPdfChartRow(["8", "9"], ["S", "S", "S", "S", "S", "S", "S", "S", "S", "R"]);
     expectPdfChartRow(["8", "10"], ["S", "S", "S", "S", "S", "S", "S", "S", "S", "S"]);
+    expectPdfChartRow(["9", "10"], ["S", "S", "S", "S", "S", "S", "S", "S", "S", "S"]);
+    expectPdfChartRow(["10", "J"], ["S", "S", "S", "S", "S", "S", "S", "S", "S", "S"]);
 
     expectPdfChartRow(["A", "2"], ["H", "H", "H", "D", "D", "H", "H", "H", "H", "H"]);
     expectPdfChartRow(["A", "3"], ["H", "H", "H", "D", "D", "H", "H", "H", "H", "H"]);

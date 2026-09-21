@@ -8,3 +8,4 @@ export * from './PlayingCard';
 export * from './PlayerArea';
 export * from './Shoe';
 export * from './Stats';
+export * from './WeeklyProgress';

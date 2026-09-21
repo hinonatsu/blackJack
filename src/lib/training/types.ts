@@ -183,10 +183,12 @@ export interface AttemptHistoryItem {
 }
 
 export interface TrainingSessionState {
-  version: 1;
+  version: 2;
   createdAt: number;
   updatedAt: number;
   modeStats: Record<TrainingMode, ModeStats>;
+  /** Per-calendar-day totals, retained for the 7-day growth view. */
+  dailyStats: Record<string, Record<TrainingMode, ModeStats>>;
   weaknesses: Record<string, WeaknessStat>;
   /** Kept intentionally short: enough for a compact recent-activity UI, not analytics. */
   recentAttempts: AttemptHistoryItem[];
@@ -200,4 +202,26 @@ export interface ModePerformance extends ModeStats {
 export interface WeaknessReview extends WeaknessStat {
   accuracy: number;
   averageResponseMs: number | null;
+}
+
+export interface DailyProgress {
+  /** Local calendar date in YYYY-MM-DD form. */
+  date: string;
+  attempts: number;
+  correct: number;
+  accuracy: number;
+  averageResponseMs: number | null;
+}
+
+export interface WeeklyProgress {
+  days: DailyProgress[];
+  activeDays: number;
+  attempts: number;
+  correct: number;
+  accuracy: number;
+  averageResponseMs: number | null;
+  /** Latest active day minus earliest active day in percentage points. */
+  accuracyChange: number | null;
+  /** Latest active day minus earliest active day in milliseconds. */
+  responseTimeChangeMs: number | null;
 }
