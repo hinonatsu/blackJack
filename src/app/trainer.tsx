@@ -99,12 +99,12 @@ export default function BlackjackTrainer() {
   const home = () => setScreen("home");
 
   let content: React.ReactNode;
-  if (screen === "basic" || screen === "speed") content = <StrategyDrill mode={screen} rules={rules} onBack={home} onRecord={training.recordAttempt} performance={training.modePerformance[screen]} />;
-  else if (screen === "hilo") content = <HiLoDrill onBack={home} onRecord={training.recordAttempt} performance={training.modePerformance.hilo} />;
-  else if (screen === "true-count" || screen === "deck-estimation") content = <TrueCountDrill initialPanel={screen === "deck-estimation" ? "deck" : "true"} onBack={home} onRecord={training.recordAttempt} performance={training.modePerformance["true-count"]} />;
-  else if (screen === "deviations") content = <DeviationDrill rules={rules} onBack={home} onRecord={training.recordAttempt} performance={training.modePerformance.deviations} />;
-  else if (screen === "weakness-review") content = <WeaknessDrill rules={rules} weaknesses={training.weaknessReview} onBack={home} onRecord={training.recordAttempt} performance={training.modePerformance["weakness-review"]} />;
-  else if (screen === "full-table") content = <FullTableSimulation rules={rules} onBack={home} onRecord={training.recordAttempt} performance={training.modePerformance["full-table"]} />;
+  if (screen === "basic" || screen === "speed") content = <StrategyDrill mode={screen} rules={rules} onBack={home} onRecord={training.recordAttempt} />;
+  else if (screen === "hilo") content = <HiLoDrill onBack={home} onRecord={training.recordAttempt} />;
+  else if (screen === "true-count" || screen === "deck-estimation") content = <TrueCountDrill initialPanel={screen === "deck-estimation" ? "deck" : "true"} onBack={home} onRecord={training.recordAttempt} />;
+  else if (screen === "deviations") content = <DeviationDrill rules={rules} onBack={home} onRecord={training.recordAttempt} />;
+  else if (screen === "weakness-review") content = <WeaknessDrill rules={rules} weaknesses={training.weaknessReview} onBack={home} onRecord={training.recordAttempt} />;
+  else if (screen === "full-table") content = <FullTableSimulation rules={rules} onBack={home} onRecord={training.recordAttempt} />;
   else content = <HomeDashboard open={open} training={training} />;
 
   return <main className="felt-texture min-h-screen overflow-x-hidden"><Header onHome={home} onSettings={() => setSettingsOpen(true)} screen={screen} />{content}{settingsOpen && <SettingsPanel rules={rules} onChange={setRules} onClose={() => setSettingsOpen(false)} />}</main>;
