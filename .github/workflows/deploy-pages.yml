@@ -29,7 +29,7 @@ jobs:
         run: npm ci
       - name: Build static site
         env:
-          NEXT_PUBLIC_BASE_PATH: /vegas-blackjack-trainer
+          NEXT_PUBLIC_BASE_PATH: /blackJack
         run: npm run build
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
