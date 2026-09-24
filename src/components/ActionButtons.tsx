@@ -38,10 +38,11 @@ export function ActionButtons({
   const unavailable = new Set(disabledActions);
 
   return (
-    <nav className={cx('grid grid-cols-2 gap-2 sm:grid-cols-5', className)} aria-label="Blackjack actions">
+    <nav className={cx('grid gap-2', compact ? 'grid-cols-5' : 'grid-cols-6 sm:grid-cols-5', className)} aria-label="Blackjack actions">
       {BLACKJACK_ACTIONS.map((action) => {
         const details = ACTION_DETAILS[action];
         const isDisabled = disabled || unavailable.has(action) || !permitted.has(action);
+        const isPrimary = action === 'HIT' || action === 'STAND';
         return (
           <button
             key={action}
@@ -51,9 +52,9 @@ export function ActionButtons({
             aria-keyshortcuts={details.shortcut}
             aria-label={`${action}, keyboard ${details.shortcut}`}
             className={cx(
-              'group relative isolate min-h-14 overflow-hidden rounded-xl border px-2 py-2 font-black tracking-[0.08em] shadow-[0_0.2rem_0.45rem_rgba(0,0,0,0.25)] transition active:translate-y-px',
+              'group relative isolate overflow-hidden rounded-xl border px-2 py-2 font-black tracking-[0.08em] shadow-[0_0.2rem_0.45rem_rgba(0,0,0,0.25)] transition active:translate-y-px',
               'focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-amber-200',
-              compact ? 'text-xs' : 'text-sm sm:min-h-16',
+              compact ? 'min-h-14 text-xs' : isPrimary ? 'col-span-3 min-h-20 text-base sm:col-span-1 sm:min-h-16 sm:text-sm' : 'col-span-2 min-h-16 text-xs sm:col-span-1 sm:text-sm',
               details.colors,
               isDisabled && 'cursor-not-allowed border-white/10 bg-slate-900/45 text-slate-400 opacity-55 grayscale',
             )}

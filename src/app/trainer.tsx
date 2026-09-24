@@ -41,14 +41,14 @@ const PRESETS = [
 
 function Header({ onHome, onSettings, screen }: { onHome: () => void; onSettings: () => void; screen: Screen }) {
   return (
-    <header className="mx-auto flex w-full max-w-7xl items-center justify-between gap-3 px-4 pb-3 pt-4 sm:px-6 sm:pt-6">
+    <header className={`mx-auto flex w-full max-w-7xl items-center justify-between gap-2 ${screen === "home" ? "px-4 pb-3 pt-4" : "px-3 pb-2 pt-3"} sm:gap-3 sm:px-6 sm:pb-3 sm:pt-6`}>
       <button type="button" onClick={onHome} className="focus-ring group text-left" aria-label="ホームへ戻る">
-        <div className="font-serif text-lg font-black tracking-[0.13em] text-amber-100 sm:text-xl">VEGAS BLACKJACK</div>
-        <div className="mt-0.5 text-[0.57rem] font-bold tracking-[0.2em] text-emerald-100/65">PRACTICE TABLE</div>
+        <div className={`font-serif font-black tracking-[0.13em] text-amber-100 sm:text-xl ${screen === "home" ? "text-lg" : "text-base"}`}>{screen === "home" ? "VEGAS BLACKJACK" : <><span className="sm:hidden">BLACKJACK</span><span className="hidden sm:inline">VEGAS BLACKJACK</span></>}</div>
+        <div className={`mt-0.5 text-[0.57rem] font-bold tracking-[0.2em] text-emerald-100/65 ${screen === "home" ? "" : "hidden sm:block"}`}>PRACTICE TABLE</div>
       </button>
       <div className="flex items-center gap-2">
-        {screen !== "home" && <button type="button" onClick={onHome} className="focus-ring rounded-lg border border-white/20 bg-black/15 px-3 py-2 text-xs font-bold text-emerald-50 hover:bg-white/10">TRAINING MENU</button>}
-        <button type="button" onClick={onSettings} className="focus-ring rounded-lg border border-amber-100/35 bg-amber-100/10 px-3 py-2 text-xs font-bold text-amber-50 hover:bg-amber-100/20">RULE SETTINGS</button>
+        {screen !== "home" && <button type="button" onClick={onHome} className="focus-ring rounded-lg border border-white/20 bg-black/15 px-2.5 py-2 text-xs font-bold text-emerald-50 hover:bg-white/10 sm:px-3"><span className="sm:hidden">MENU</span><span className="hidden sm:inline">TRAINING MENU</span></button>}
+        <button type="button" onClick={onSettings} className="focus-ring rounded-lg border border-amber-100/35 bg-amber-100/10 px-2.5 py-2 text-xs font-bold text-amber-50 hover:bg-amber-100/20 sm:px-3"><span className="sm:hidden">RULES</span><span className="hidden sm:inline">RULE SETTINGS</span></button>
       </div>
     </header>
   );
