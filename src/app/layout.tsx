@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { OfflineRegistration } from "./offline-registration";
 
 export const metadata: Metadata = {
   title: "Vegas Blackjack Trainer",
@@ -9,7 +10,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="ja">
-      <body>{children}</body>
+      <body>
+        <OfflineRegistration />
+        {children}
+      </body>
     </html>
   );
 }
