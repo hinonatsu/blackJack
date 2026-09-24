@@ -2,14 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { ActionButtons, Chip, DealerArea, DiscardTray, FeedbackBanner, PlayerArea, Shoe } from "@/components";
+import { ActionButtons, Chip, DealerArea, DiscardTray, FeedbackBanner, PlayerArea, Shoe, Stats } from "@/components";
 import { getBasicStrategyDecision } from "@/lib/basicStrategy";
 import { canDoubleHand, canSurrenderHand, canSplitHand, createPlayerHand, doubleHand, evaluateHand, hitHand, isBlackjack, playDealerHand, splitHand, standHand, surrenderHand, availablePlayerActions, settleRound } from "@/lib/blackjackEngine";
 import { createShoe, discardCards, drawCard, drawCards, reshuffleShoe, shouldReshuffleBeforeRound } from "@/lib/deck";
 import { applyHiLoCards, hiLoValue } from "@/lib/hiloCount";
 import { calculateTrueCount, decksRemainingFromCards } from "@/lib/trueCount";
 import { countingWeaknessContext, strategyWeaknessContexts, trueCountWeaknessContext } from "@/lib/training/session";
-import type { TrainingAttempt } from "@/lib/training/types";
+import type { ModePerformance, TrainingAttempt } from "@/lib/training/types";
 import { useSpaceAdvance } from "@/hooks/useTrainingSession";
 import type { BlackjackRules, Card, HandSettlement, PlayerAction, PlayerHand, ShoeState } from "@/types";
 
@@ -124,7 +124,7 @@ function strategySituationFromDecision(decision: ReturnType<typeof getBasicStrat
   };
 }
 
-export function FullTableSimulation({ rules, onBack, onRecord }: { rules: BlackjackRules; onBack: () => void; onRecord: (attempt: TrainingAttempt) => void }) {
+export function FullTableSimulation({ rules, onBack, onRecord, performance }: { rules: BlackjackRules; onBack: () => void; onRecord: (attempt: TrainingAttempt) => void; performance: ModePerformance }) {
   const [game, setGame] = useState<LiveGame>(() => blankGame(rules));
   const [scope, setScope] = useState<TrainingScope>("combined");
   const [casinoMode, setCasinoMode] = useState(false);
@@ -230,7 +230,7 @@ export function FullTableSimulation({ rules, onBack, onRecord }: { rules: Blackj
   useSpaceAdvance(nextRound, game.phase === "SETTLED" && (scope === "basic" || Boolean(countFeedback)));
 
   return <div className={`mx-auto w-full max-w-7xl px-3 pb-10 sm:px-6 ${casinoMode ? "pt-1" : ""}`}>
-    {!casinoMode && <div className="mb-3"><p className="hidden text-[0.62rem] font-black tracking-[0.18em] text-amber-200 sm:block">LIVE SHOE</p><h1 className="font-serif text-xl font-black tracking-wide text-white sm:text-3xl"><span className="sm:hidden">TABLE</span><span className="hidden sm:inline">FULL TABLE SIMULATION</span></h1><p className="mt-1 hidden text-sm text-emerald-50/70 sm:block">Shoeから実際に312 cardsを消費します。結果には短期Varianceがあります。</p></div>}
+    {!casinoMode && <div className="mb-3 sm:mb-4 sm:flex sm:flex-wrap sm:items-start sm:justify-between sm:gap-3"><div><p className="hidden text-[0.62rem] font-black tracking-[0.18em] text-amber-200 sm:block">LIVE SHOE</p><h1 className="font-serif text-xl font-black tracking-wide text-white sm:text-3xl"><span className="sm:hidden">TABLE</span><span className="hidden sm:inline">FULL TABLE SIMULATION</span></h1><p className="mt-1 hidden text-sm text-emerald-50/70 sm:block">Shoeから実際に312 cardsを消費します。結果には短期Varianceがあります。</p></div><div className="hidden w-full max-w-sm sm:block sm:w-80"><Stats stats={performance} title="SESSION" compact /></div></div>}
     {!casinoMode && <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/12 bg-black/20 p-3"><div className="flex flex-wrap gap-1 rounded-lg border border-white/15 p-0.5">{(["basic", "counting", "combined"] as const).map((value) => <button key={value} type="button" onClick={() => setScope(value)} className={`focus-ring rounded-md px-3 py-1.5 text-xs font-black ${scope === value ? "bg-amber-200/20 text-amber-100" : "text-emerald-50/60"}`}>{value === "basic" ? "Basic Strategy only" : value === "counting" ? "Counting only" : "Combined"}</button>)}</div><div className="flex flex-wrap items-center gap-3 text-xs font-bold text-emerald-50/75"><label>DEAL ANIMATION <select value={animation} onChange={(event) => setAnimation(event.target.value as AnimationMode)} className="ml-1 rounded bg-emerald-950 px-2 py-1 text-white"><option>Off</option><option>Fast</option><option>Realistic</option></select></label><label className="flex items-center gap-1"><input type="checkbox" checked={soundEnabled} onChange={(event) => setSoundEnabled(event.target.checked)} className="accent-amber-300" /> SOUND {soundEnabled ? "ON" : "OFF"}</label><label className="flex items-center gap-1"><input type="checkbox" checked={casinoMode} onChange={(event) => setCasinoMode(event.target.checked)} className="accent-amber-300" /> CASINO MODE</label></div></div>}
     {casinoMode && <div className="mb-2 flex justify-end"><button type="button" onClick={() => setCasinoMode(false)} className="focus-ring rounded-lg border border-white/20 bg-black/20 px-3 py-2 text-xs font-bold text-emerald-50">EXIT CASINO MODE</button></div>}
     <section className="felt-texture relative overflow-hidden rounded-[2rem] border border-amber-100/30 bg-emerald-900/30 p-3 shadow-2xl sm:p-6"><div className="pointer-events-none absolute inset-x-[8%] bottom-0 h-48 rounded-t-[50%] border-t border-amber-100/20" />
